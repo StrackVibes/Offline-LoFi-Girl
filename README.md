@@ -1,6 +1,6 @@
 # Offline LoFi Girl
 
-This project is an offline version of the LoFi Girl, specifically crafted by StrackVibes. It includes a looping video and a playlist of songs that can be played in sequence.
+This project is an offline version of the LoFi Girl. It includes a looping video and a playlist of songs that can be played in shuffled sequence.
 
 ![Screenshot](https://i.ibb.co/Bn6qDqW/Capture.png)
 
