@@ -23,7 +23,7 @@ This project is an offline version of the LoFi Girl. It includes a looping video
 ## Notes
 
 - Due to browser restrictions, the music playback requires user interaction. Click the "Play Music" button to start.
-- This project is designed to work offline, providing an enjoyable experience everyone.
+- This project is designed to work offline, providing an enjoyable experience for everyone.
 
 ## Acknowledgements
 
