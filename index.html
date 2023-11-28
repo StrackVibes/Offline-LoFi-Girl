@@ -8,11 +8,6 @@
       margin: 0;
       padding: 0;
       overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      height: 100vh;
-      position: relative;
     }
     #video {
       position: fixed;
@@ -31,13 +26,23 @@
       text-align: center;
       left: 50%;
       transform: translateX(-50%);
+      z-index: 1;
     }
-    #credit {
+    #previous-song {
       position: fixed;
       top: 10px;
-      right: 10px;
-      font-size: 12px;
-      color: rgb(0, 127, 135, 0.7);
+      right: 20px;
+      font-size: .7vw;
+      color: rgba(235, 235, 235, 0.7);
+    }
+    #current-song {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      font-size: 2vw;
+      color: rgba(255, 255, 255, 0.9);
+      font-family: 'Arial', sans-serif;
+      z-index: 1;
     }
   </style>
 </head>
@@ -48,21 +53,34 @@
 
   <audio id="audio" controls autoplay>
     <source src="./Music/Barradeen - Bedtime after a coffee.mp3" type="audio/mpeg">
-    <source src="./Music/Ghostrifter - Morning Routine.mp3" type="audio/mpeg">    
-  </audio>   
-  <div id="credit">Crafted with precision by StrackVibes🤙</div>
+    <source src="./Music/Ghostrifter - Morning Routine.mp3" type="audio/mpeg">
+    <!-- Add more audio sources here -->
+  </audio>
+
+  <div id="previous-song">
+    <script type="text/javascript">
+      var artist = "Y2tWaWJlcw==";
+      var song = "Q3JhZnRlZ";
+      var loop = "CBieSBTdHJh";
+      var LofiGirl = song + loop + artist;
+
+      // Display the decoded text
+      document.write(atob(LofiGirl));
+    </script>
+  </div>
+
+  <div id="current-song"></div>
+
   <script>
     const audio = document.getElementById('audio');
-
-
     const playlist = [
-'./Music/Barradeen - Bedtime after a coffee.mp3',                      
-'./Music/Ghostrifter - Morning Routine.mp3', 
- // Add more songs here          
+      './Music/Barradeen - Bedtime after a coffee.mp3',
+      './Music/Ghostrifter - Morning Routine.mp3',
+      // Add more songs here
     ];
-    
 
-    // Function to shuffle the playlist
+    let shuffledPlaylist = shuffle(playlist);
+
     function shuffle(array) {
       let currentIndex = array.length, randomIndex;
 
@@ -78,10 +96,6 @@
       return array;
     }
 
-    // Shuffle the playlist
-    let shuffledPlaylist = shuffle(playlist);
-
-    // Function to play the shuffled playlist
     function playPlaylist() {
       let currentIndex = 0;
 
@@ -99,11 +113,21 @@
         audio.src = shuffledPlaylist[currentIndex];
         audio.load();
         audio.play();
+
+        updateCurrentSongDisplay();
       });
     }
 
-    // Start playing the playlist
+    function updateCurrentSongDisplay() {
+      let currentSrc = audio.src;
+      let currentSong = currentSrc.substring(currentSrc.lastIndexOf('/') + 1); // Get the song file name
+      currentSong = currentSong.replace('.mp3', ''); // Remove the ".mp3" extension
+      currentSong = decodeURIComponent(currentSong.replace(/\+/g, ' ')); // Decode URL encoding
+      document.getElementById('current-song').textContent = currentSong;
+    }
+
     playPlaylist();
+    updateCurrentSongDisplay();
   </script>
 </body>
 </html>
