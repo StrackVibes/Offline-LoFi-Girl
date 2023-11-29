@@ -28,19 +28,12 @@
       transform: translateX(-50%);
       z-index: 1;
     }
-    #previous-song {
-      position: fixed;
-      top: 10px;
-      right: 20px;
-      font-size: .7vw;
-      color: rgba(235, 235, 235, 0.7);
-    }
     #current-song {
       position: fixed;
       top: 20px;
       left: 20px;
       font-size: 2vw;
-      color: rgba(255, 255, 255, 0.9);
+      color: white;
       font-family: 'Arial', sans-serif;
       z-index: 1;
     }
@@ -52,23 +45,10 @@
   </video>
 
   <audio id="audio" controls autoplay>
-    <source src="./Music/Barradeen - Bedtime after a coffee.mp3" type="audio/mpeg">
-    <source src="./Music/Ghostrifter - Morning Routine.mp3" type="audio/mpeg">
+    <source src="./Music/Barradeen - Bedtime after a coffee.mp3" type="audio/mp3">
+    <source src="./Music/Ghostrifter - Morning Routine.mp3" type="audio/mp3">
     <!-- Add more audio sources here -->
   </audio>
-
-  <div id="previous-song">
-    <script type="text/javascript">
-      var artist = "ZSBTdHJhY2s=";
-      var song = "Q3JhZnRlZC";
-      var loop = "BieSBTaGFu";
-      var LofiGirl = song + loop + artist;
-
-      // Display the decoded text
-      document.write(atob(LofiGirl));
-    </script>
-  </div>
-
   <div id="current-song"></div>
 
   <script>
