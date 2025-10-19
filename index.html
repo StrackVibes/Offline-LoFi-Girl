@@ -1,113 +1,222 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Offline LoFi Girl</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <base href="./resources/">
+
   <style>
-    body {
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-    }
+    html, body { height: 100%; margin: 0; }
+    body { overflow: hidden; font-family: system-ui, -apple-system, Arial, sans-serif; }
+
     #video {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      z-index: -1;
+      position: fixed; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover; z-index: -1; background:#000;
     }
+
+    .hud {
+      position: fixed; inset: 16px auto auto 16px;
+      color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.7);
+      display: grid; gap: 8px; max-width: 92vw;
+    }
+    #current-song { font-size: clamp(18px, 2.5vw, 28px); font-weight: 600; }
+    #status { font-size: clamp(12px, 1.5vw, 14px); opacity: .9; }
+
     #audio {
-      width: 20%;
-      height: 3%;
-      position: absolute;
-      bottom: 5px;
-      text-align: center;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 1;
+      position: fixed; left: 50%; transform: translateX(-50%);
+      bottom: 10px; width: min(560px, 90vw);
+      z-index: 1; opacity: .95;
     }
-    #current-song {
-      position: fixed;
-      top: 20px;
-      left: 20px;
-      font-size: 2vw;
-      color: white;
-      font-family: 'Arial', sans-serif;
-      z-index: 1;
+
+    #keys {
+      position: fixed; right: 16px; bottom: 16px;
+      font-size: 12px; color: #fff; opacity: .7;
+      background: rgba(0,0,0,.25); padding: 6px 8px; border-radius: 6px;
+      user-select: none;
     }
   </style>
 </head>
 <body>
-  <video id="video" autoplay loop muted>
-    <source src="Loop.mp4" type="video/mp4">
+  <video id="video" autoplay loop muted playsinline>
+    <source src="./Videos/Loop.mp4" type="video/mp4" />
   </video>
 
-  <audio id="audio" controls autoplay>
-    <source src="./Music/Barradeen - Bedtime after a coffee.mp3" type="audio/mp3">
-    <source src="./Music/Ghostrifter - Morning Routine.mp3" type="audio/mp3">
-    <!-- Add more audio sources here -->
-  </audio>
-  <div id="current-song"></div>
+  <audio id="audio" controls></audio>
+
+  <div class="hud">
+    <div id="current-song"></div>
+    <div id="status"></div>
+  </div>
+
+  <div id="keys">Space play or pause • N next • P prev • ↑ or ↓ volume</div>
+
+  <script src="./playlists.generated.js"></script>
 
   <script>
-    const audio = document.getElementById('audio');
-    const playlist = [
-      './Music/Barradeen - Bedtime after a coffee.mp3',
-      './Music/Ghostrifter - Morning Routine.mp3',
-      // Add more songs here
-    ];
+    function pickSeason(d = new Date()) {
+      const m = d.getMonth();
+      const day = d.getDate();
+      const q = new URLSearchParams(location.search).get("bg");
+      if (q) {
+        const k = q.toLowerCase();
+        if (k === "halloween") return "halloween";
+        if (k === "xmas") return "xmas";
+        if (k === "aprilfools") return "aprilfools";
+        return "loop";
+      }
+      if (m === 3 && day === 1) return "aprilfools";
+      const isHalloween = (m === 9) || (m === 10 && day <= 2);
+      const isXmas = (m === 11) || (m === 0 && day <= 7);
+      if (isHalloween) return "halloween";
+      if (isXmas) return "xmas";
+      return "loop";
+    }
 
-    let shuffledPlaylist = shuffle(playlist);
+    function pickBackgroundSrc(season) {
+      if (season === "halloween") return "./Videos/Halloween.mp4";
+      if (season === "xmas") return "./Videos/Xmas.mp4";
+      if (season === "aprilfools") return "./Videos/April_Fools.mp4";
+      return "./Videos/Loop.mp4";
+    }
 
-    function shuffle(array) {
-      let currentIndex = array.length, randomIndex;
+    const audio = document.getElementById("audio");
+    const titleEl = document.getElementById("current-song");
+    const statusEl = document.getElementById("status");
+    const video = document.getElementById("video");
+    const videoSrc = video.querySelector("source");
 
-      while (currentIndex !== 0) {
-        randomIndex = Math.floor(Math.random() * currentIndex);
-        currentIndex--;
+    let season = pickSeason();
+    let playlist = (window.PLAYLISTS && window.PLAYLISTS[season]) ? window.PLAYLISTS[season] : [];
+    let order = [];
+    let history = [];
+    let index = 0;
 
-        [array[currentIndex], array[randomIndex]] = [
-          array[randomIndex], array[currentIndex]
-        ];
+    const fmtName = p => decodeURIComponent(p.split("/").pop().replace(/\.(mp3|wav|m4a|ogg)$/i, ""));
+    const save = (k,v) => localStorage.setItem(k, JSON.stringify(v));
+    const load = (k,d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
+
+    function shuffleNoRepeat(arr) {
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      if (history.length && a.length > 1 && a[0] === history[history.length - 1]) {
+        [a[0], a[1]] = [a[1], a[0]];
+      }
+      return a;
+    }
+
+    function setMediaSession(name) {
+      if ("mediaSession" in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: name, artist: "LoFi Mix", album: "Offline", artwork: []
+        });
+        navigator.mediaSession.setActionHandler("previoustrack", prevTrack);
+        navigator.mediaSession.setActionHandler("nexttrack", nextTrack);
+        navigator.mediaSession.setActionHandler("play", () => audio.play());
+        navigator.mediaSession.setActionHandler("pause", () => audio.pause());
+      }
+    }
+
+    function updateHUD(extra = "") {
+      const name = fmtName(order[index] || "");
+      titleEl.textContent = name || "Loading";
+      statusEl.textContent = `${audio.paused ? "Paused" : "Playing"} ${extra}`.trim();
+      setMediaSession(name);
+    }
+
+    function applyBackgroundFor(seasonName) {
+      const wanted = pickBackgroundSrc(seasonName);
+      if (!videoSrc) return;
+      if (videoSrc.getAttribute("src") !== wanted) {
+        const wasPaused = video.paused;
+        const t = video.currentTime;
+        videoSrc.setAttribute("src", wanted);
+        video.load();
+        video.currentTime = t % 5;
+        if (!wasPaused) video.play().catch(()=>{});
+      }
+    }
+
+    function loadTrack(i) {
+      index = i;
+      audio.src = order[index];
+      audio.load();
+      audio.play().catch(() => { updateHUD("(tap play to start)"); });
+      updateHUD();
+      save(`lofi.index.${season}`, index);
+    }
+
+    function nextTrack() {
+      if (++index >= order.length) {
+        order = shuffleNoRepeat(playlist);
+        index = 0;
+      }
+      loadTrack(index);
+    }
+
+    function prevTrack() {
+      if (--index < 0) index = Math.max(0, order.length - 1);
+      loadTrack(index);
+    }
+
+    (function init() {
+      applyBackgroundFor(season);
+
+      if (!playlist || !playlist.length) {
+        statusEl.textContent = "Playlist empty. Regenerate playlists.generated.js.";
+        return;
       }
 
-      return array;
-    }
+      order = shuffleNoRepeat(playlist);
+      audio.volume = load("lofi.volume", 0.8);
+      const savedIdx = load(`lofi.index.${season}`, 0);
+      if (Number.isInteger(savedIdx) && savedIdx >= 0 && savedIdx < order.length) index = savedIdx;
 
-    function playPlaylist() {
-      let currentIndex = 0;
+      loadTrack(index);
 
-      audio.src = shuffledPlaylist[currentIndex];
-      audio.load();
-      audio.play();
-
-      audio.addEventListener('ended', () => {
-        currentIndex++;
-        if (currentIndex >= shuffledPlaylist.length) {
-          currentIndex = 0;
-          shuffledPlaylist = shuffle(playlist);
-        }
-
-        audio.src = shuffledPlaylist[currentIndex];
-        audio.load();
-        audio.play();
-
-        updateCurrentSongDisplay();
+      audio.addEventListener("ended", () => { history.push(order[index]); nextTrack(); });
+      audio.addEventListener("play", () => updateHUD());
+      audio.addEventListener("pause", () => updateHUD());
+      audio.addEventListener("timeupdate", () => {
+        const t = Math.floor(audio.currentTime);
+        statusEl.textContent = `${audio.paused ? "Paused" : "Playing"} • ${t}s`;
       });
-    }
+      audio.addEventListener("error", () => { updateHUD("(skipped bad file)"); setTimeout(nextTrack, 250); });
+      audio.addEventListener("volumechange", () => save("lofi.volume", audio.volume));
 
-    function updateCurrentSongDisplay() {
-      let currentSrc = audio.src;
-      let currentSong = currentSrc.substring(currentSrc.lastIndexOf('/') + 1); // Get the song file name
-      currentSong = currentSong.replace('.mp3', ''); // Remove the ".mp3" extension
-      currentSong = decodeURIComponent(currentSong.replace(/\+/g, ' ')); // Decode URL encoding
-      document.getElementById('current-song').textContent = currentSong;
-    }
+      window.addEventListener("keydown", (e) => {
+        if (e.target && ["INPUT","TEXTAREA","SELECT"].includes(e.target.tagName)) return;
+        if (e.code === "Space") { e.preventDefault(); audio.paused ? audio.play() : audio.pause(); }
+        if (e.key === "n" || e.key === "N") nextTrack();
+        if (e.key === "p" || e.key === "P") prevTrack();
+        if (e.key === "ArrowUp") audio.volume = Math.min(1, audio.volume + 0.05);
+        if (e.key === "ArrowDown") audio.volume = Math.max(0, audio.volume - 0.05);
+      });
 
-    playPlaylist();
-    updateCurrentSongDisplay();
+      function checkSeasonAndQueue() {
+        const newSeason = pickSeason();
+        if (newSeason !== season) {
+          season = newSeason;
+          applyBackgroundFor(season);
+          const newList = (window.PLAYLISTS && window.PLAYLISTS[season]) ? window.PLAYLISTS[season] : [];
+          if (newList && newList.length) {
+            playlist = newList;
+            order = shuffleNoRepeat(playlist);
+            index = 0;
+            statusEl.textContent = `Season changed to ${season}. New playlist queued.`;
+          } else {
+            statusEl.textContent = `Season changed to ${season}. Playlist empty.`;
+          }
+        }
+      }
+
+      checkSeasonAndQueue();
+      setInterval(checkSeasonAndQueue, 30_000);
+    })();
   </script>
 </body>
 </html>
